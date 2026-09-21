@@ -10,15 +10,18 @@ from crewai import Agent, Crew, LLM, Process, Task  # noqa: E402
 
 from search_tool import WebSearchTool  # noqa: E402
 
-# Groq's model id is "openai/gpt-oss-120b".
-# CrewAI needs a "groq/" provider prefix in front of it.
-MODEL_ID = "groq/openai/gpt-oss-120b"
+# Route through Groq's OpenAI-compatible endpoint.
+# The "openai/" prefix forces CrewAI's native OpenAI code path
+# instead of the LiteLLM fallback (which has a cache_breakpoint bug with Groq).
+MODEL_ID = "openai/openai/gpt-oss-120b"
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 
 def build_crew(topic: str, api_key: str, max_results: int = 5, temperature: float = 0.4) -> Crew:
     llm = LLM(
         model=MODEL_ID,
         api_key=api_key,
+        base_url=GROQ_BASE_URL,
         temperature=temperature,
         max_tokens=8000,
     )
@@ -35,8 +38,8 @@ def build_crew(topic: str, api_key: str, max_results: int = 5, temperature: floa
         tools=[WebSearchTool(max_results=max_results)],
         llm=llm,
         verbose=True,
-        allow_delegation=False,   # single agent: nobody to delegate to
-        max_iter=12,              # ceiling on think/search loops
+        allow_delegation=False,
+        max_iter=12,
     )
 
     research_task = Task(
@@ -72,7 +75,7 @@ def build_crew(topic: str, api_key: str, max_results: int = 5, temperature: floa
         tasks=[research_task],
         process=Process.sequential,
         verbose=True,
-        memory=False,   # keep it off: memory pulls in a vector DB and an embeddings key
+        memory=False,
     )
 
 
